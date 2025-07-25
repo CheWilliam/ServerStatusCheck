@@ -3,6 +3,7 @@ package zf.TurboChe.ServerStatusChecker;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -14,7 +15,7 @@ import zf.TurboChe.ServerStatusChecker.utils.ServerStatus;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ServerStatusChecker extends JavaPlugin {
+public class ServerStatusChecker extends JavaPlugin implements CommandExecutor {
     private ConfigManager configManager;
     private Map<String, ServerInfo> servers = new HashMap<>();
     private StatusCache statusCache;
@@ -32,7 +33,7 @@ public class ServerStatusChecker extends JavaPlugin {
         statusCache = new StatusCache();
         
         // 注册命令
-        getCommand("serverstatus").setExecutor(this::onCommand);
+        getCommand("serverstatus").setExecutor(this);
         
         // 注册占位符
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
@@ -48,7 +49,8 @@ public class ServerStatusChecker extends JavaPlugin {
         getLogger().info(ChatColor.GREEN + "ServerStatusChecker 已启用，共加载 " + servers.size() + " 个服务器");
     }
 
-    private boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length > 0) {
             String serverId = args[0];
             if (servers.containsKey(serverId)) {
@@ -60,11 +62,16 @@ public class ServerStatusChecker extends JavaPlugin {
             }
         } else {
             sender.sendMessage(ChatColor.GOLD + "=== 服务器状态 ===");
-            servers.forEach((id, info) -> {
-                ServerStatus status = statusCache.getStatus(id);
-                sender.sendMessage(ChatColor.GRAY + "- " + id + ": " + 
-                        (status.isOnline() ? ChatColor.GREEN + "在线" : ChatColor.RED + "离线"));
-            });
+            // 确保 servers 和 statusCache 不为 null
+            if (servers != null && statusCache != null) {
+                servers.forEach((id, info) -> {
+                    ServerStatus status = statusCache.getStatus(id);
+                    sender.sendMessage(ChatColor.GRAY + "- " + id + ": " + 
+                            (status.isOnline() ? ChatColor.GREEN + "在线" : ChatColor.RED + "离线"));
+                });
+            } else {
+                sender.sendMessage(ChatColor.RED + "服务器状态系统未初始化完成");
+            }
         }
         return true;
     }
