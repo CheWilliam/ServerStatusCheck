@@ -6,16 +6,15 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
+import zf.TurboChe.ServerStatusChecker.utils.ConfigManager;
+import zf.TurboChe.ServerStatusChecker.utils.ServerInfo;
+import zf.TurboChe.ServerStatusChecker.utils.ServerStatus;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
-
-import zf.TurboChe.ServerStatusChecker.utils.ConfigManager;
-import zf.TurboChe.ServerStatusChecker.utils.ServerInfo;
-import zf.TurboChe.ServerStatusChecker.utils.ServerStatus;
 
 public class ServerStatusChecker extends JavaPlugin {
     private FileConfiguration config;
@@ -25,15 +24,17 @@ public class ServerStatusChecker extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        // 初始化 ConfigManager 并加载配置
         configManager = new ConfigManager(this);
         configManager.loadConfig();
+        config = configManager.getConfig();
 
         saveDefaultConfig();
-        config = getConfig();
 
         // 加载服务器配置
         loadServers();
 
+        // 初始化状态缓存
         statusCache = new StatusCache();
 
         // 注册命令
@@ -42,8 +43,7 @@ public class ServerStatusChecker extends JavaPlugin {
                 String serverId = args[0];
                 if (servers.containsKey(serverId)) {
                     ServerStatus status = statusCache.getStatus(serverId);
-                    sender.sendMessage(ChatColor.GREEN + "服务器 " + serverId + " 状态: " +
-                            (status.isOnline() ? ChatColor.GREEN + "在线" : ChatColor.RED + "离线"));
+                    sender.sendMessage(ChatColor.GREEN + "服务器 " + serverId + " 状态: " + status.getStatusText());
                 } else {
                     sender.sendMessage(ChatColor.RED + "未知服务器: " + serverId);
                 }
@@ -51,8 +51,7 @@ public class ServerStatusChecker extends JavaPlugin {
                 sender.sendMessage(ChatColor.GOLD + "=== 服务器状态 ===");
                 servers.forEach((id, info) -> {
                     ServerStatus status = statusCache.getStatus(id);
-                    sender.sendMessage(ChatColor.GRAY + "- " + id + ": " +
-                            (status.isOnline() ? ChatColor.GREEN + "在线" : ChatColor.RED + "离线"));
+                    sender.sendMessage(ChatColor.GRAY + "- " + id + ": " + status.getStatusText());
                 });
             }
             return true;
@@ -72,18 +71,9 @@ public class ServerStatusChecker extends JavaPlugin {
         getLogger().info("ServerStatusChecker 已启用，共加载 " + servers.size() + " 个服务器");
     }
 
-    public ConfigManager getConfigManager() {
-        return configManager;
-    }
-
-    public StatusCache getStatusCache() {
-        return statusCache;
-    }
-
     private void loadServers() {
         servers.clear();
         servers = configManager.getServers();
-
         for (ServerInfo server : servers.values()) {
             statusCache.updateStatus(server.getId(), false, 0);
             getLogger().info("已加载服务器配置: " + server.getId() + " (" + server.getHost() + ":" + server.getPort() + ")");
@@ -120,7 +110,11 @@ public class ServerStatusChecker extends JavaPlugin {
         }
     }
 
-    public ServerStatus getServerStatus(String serverId) {
-        return statusCache.getStatus(serverId);
+    public StatusCache getStatusCache() {
+        return statusCache;
+    }
+
+    public ConfigManager getConfigManager() {
+        return configManager;
     }
 }
