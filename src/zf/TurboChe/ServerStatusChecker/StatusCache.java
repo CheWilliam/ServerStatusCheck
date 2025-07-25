@@ -6,15 +6,14 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class StatusCache {
-    private final Map<String, ServerStatus> statusMap = new HashMap<>();
+    private final Map<String, ServerStatus> cache = new HashMap<>();
 
-    // 更新服务器状态
-    public void updateStatus(String serverId, boolean isOnline, int playerCount) {
-        statusMap.put(serverId, new ServerStatus(isOnline, playerCount, System.currentTimeMillis()));
+    public ServerStatus getStatus(String serverId) {
+        return cache.computeIfAbsent(serverId, 
+                k -> new ServerStatus(false, 0, System.currentTimeMillis()));
     }
 
-    // 获取服务器状态
-    public ServerStatus getStatus(String serverId) {
-        return statusMap.getOrDefault(serverId, new ServerStatus(false, 0, 0));
+    public void updateStatus(String serverId, boolean isOnline, int playerCount) {
+        cache.put(serverId, new ServerStatus(isOnline, playerCount, System.currentTimeMillis()));
     }
 }
