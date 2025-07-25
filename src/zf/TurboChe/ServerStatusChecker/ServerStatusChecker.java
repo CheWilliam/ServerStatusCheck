@@ -19,7 +19,7 @@ import java.util.Map;
 public class ServerStatusChecker extends JavaPlugin {
     private FileConfiguration config;
     private Map<String, ServerInfo> servers = new HashMap<>();
-    private StatusCache statusCache;
+    private Map<String, ServerStatus> statusCache = new HashMap<>();
     private ConfigManager configManager;
 
     @Override
@@ -34,24 +34,23 @@ public class ServerStatusChecker extends JavaPlugin {
         // 加载服务器配置
         loadServers();
 
-        // 初始化状态缓存
-        statusCache = new StatusCache();
-
         // 注册命令
         getCommand("serverstatus").setExecutor((sender, command, label, args) -> {
             if (args.length > 0) {
                 String serverId = args[0];
                 if (servers.containsKey(serverId)) {
-                    ServerStatus status = statusCache.getStatus(serverId);
-                    sender.sendMessage(ChatColor.GREEN + "服务器 " + serverId + " 状态: " + status.getStatusText());
+                    ServerStatus status = statusCache.getOrDefault(serverId, new ServerStatus(false, 0, System.currentTimeMillis()));
+                    sender.sendMessage(ChatColor.GREEN + "服务器 " + serverId + " 状态: " +
+                            (status.isOnline() ? ChatColor.GREEN + "在线" : ChatColor.RED + "离线"));
                 } else {
                     sender.sendMessage(ChatColor.RED + "未知服务器: " + serverId);
                 }
             } else {
                 sender.sendMessage(ChatColor.GOLD + "=== 服务器状态 ===");
                 servers.forEach((id, info) -> {
-                    ServerStatus status = statusCache.getStatus(id);
-                    sender.sendMessage(ChatColor.GRAY + "- " + id + ": " + status.getStatusText());
+                    ServerStatus status = statusCache.getOrDefault(id, new ServerStatus(false, 0, System.currentTimeMillis()));
+                    sender.sendMessage(ChatColor.GRAY + "- " + id + ": " +
+                            (status.isOnline() ? ChatColor.GREEN + "在线" : ChatColor.RED + "离线"));
                 });
             }
             return true;
@@ -60,23 +59,46 @@ public class ServerStatusChecker extends JavaPlugin {
         // 注册占位符
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new StatusExpansion(this).register();
-            getLogger().info("已成功注册 PlaceholderAPI 扩展");
+            getLogger().info(ChatColor.GREEN + "已成功注册 PlaceholderAPI 扩展");
         } else {
-            getLogger().warning("未找到 PlaceholderAPI，占位符功能将不可用");
+            getLogger().warning(ChatColor.YELLOW + "未找到 PlaceholderAPI，占位符功能将不可用");
         }
 
         // 启动定时检测任务
         startStatusCheckTask();
 
-        getLogger().info("ServerStatusChecker 已启用，共加载 " + servers.size() + " 个服务器");
+        // 加载成功时在后台添加色彩鲜艳的显示
+        getLogger().info(ChatColor.GREEN + "ServerStatusChecker 已启用，共加载 " + servers.size() + " 个服务器");
     }
 
     private void loadServers() {
         servers.clear();
-        servers = configManager.getServers();
-        for (ServerInfo server : servers.values()) {
-            statusCache.updateStatus(server.getId(), false, 0);
-            getLogger().info("已加载服务器配置: " + server.getId() + " (" + server.getHost() + ":" + server.getPort() + ")");
+        if (config.contains("servers")) {
+            for (String serverId : config.getConfigurationSection("servers").getKeys(false)) {
+                String host = config.getString("servers." + serverId + ".host");
+                int port = config.getInt("servers." + serverId + ".port", 25565);
+                long checkInterval = config.getLong("servers." + serverId + ".check-interval", 30) * 20L;
+                long timeout = config.getLong("servers." + serverId + ".timeout", 2000);
+
+                servers.put(serverId, new ServerInfo(serverId, host, port, checkInterval, timeout));
+                statusCache.put(serverId, new ServerStatus(false, 0, System.currentTimeMillis()));
+
+                getLogger().info(ChatColor.GREEN + "已加载服务器配置: " + serverId + " (" + host + ":" + port + ")");
+            }
+        } else {
+            // 添加默认服务器配置
+            config.set("servers.vanilla.host", "127.0.0.1");
+            config.set("servers.vanilla.port", 25566);
+            config.set("servers.vanilla.check-interval", 30);
+            config.set("servers.vanilla.timeout", 2000);
+
+            config.set("servers.lobby.host", "127.0.0.1");
+            config.set("servers.lobby.port", 25565);
+            config.set("servers.lobby.check-interval", 30);
+            config.set("servers.lobby.timeout", 2000);
+
+            saveConfig();
+            loadServers(); // 重新加载配置
         }
     }
 
@@ -92,29 +114,25 @@ public class ServerStatusChecker extends JavaPlugin {
     }
 
     private void checkServerStatus(ServerInfo server) {
-        ServerStatus lastStatus = statusCache.getStatus(server.getId());
+        ServerStatus lastStatus = statusCache.get(server.getId());
         long currentTime = System.currentTimeMillis();
 
         // 检查是否需要更新状态（避免过于频繁的检测）
-        if (currentTime - lastStatus.getLastCheckTime() < server.getInterval() * 1000) {
+        if (currentTime - lastStatus.getLastCheckTime() < server.getCheckInterval() * 50) {
             return;
         }
 
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(server.getHost(), server.getPort()), (int) server.getTimeout());
-            statusCache.updateStatus(server.getId(), true, 0);
-            getLogger().fine("服务器 " + server.getId() + " 在线");
+            statusCache.put(server.getId(), new ServerStatus(true, 0, currentTime));
+            getLogger().fine(ChatColor.GREEN + "服务器 " + server.getId() + " 在线");
         } catch (IOException e) {
-            statusCache.updateStatus(server.getId(), false, 0);
-            getLogger().fine("服务器 " + server.getId() + " 离线: " + e.getMessage());
+            statusCache.put(server.getId(), new ServerStatus(false, 0, currentTime));
+            getLogger().fine(ChatColor.RED + "服务器 " + server.getId() + " 离线: " + e.getMessage());
         }
     }
 
-    public StatusCache getStatusCache() {
-        return statusCache;
-    }
-
-    public ConfigManager getConfigManager() {
-        return configManager;
+    public ServerStatus getServerStatus(String serverId) {
+        return statusCache.getOrDefault(serverId, new ServerStatus(false, 0, System.currentTimeMillis()));
     }
 }
