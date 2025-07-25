@@ -22,20 +22,20 @@ public class ServerStatusChecker extends JavaPlugin implements CommandExecutor {
 
     @Override
     public void onEnable() {
-        // 初始化配置管理器
+        // 1. 首先初始化配置管理器
         configManager = new ConfigManager(this);
         configManager.loadConfig();
         
-        // 加载服务器配置
+        // 2. 然后加载服务器配置（确保 configManager 已初始化）
         loadServers();
         
-        // 初始化状态缓存
+        // 3. 初始化状态缓存
         statusCache = new StatusCache();
         
-        // 注册命令
+        // 4. 注册命令
         getCommand("serverstatus").setExecutor(this);
         
-        // 注册占位符
+        // 5. 注册占位符
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new StatusExpansion(this).register();
             getLogger().info(ChatColor.GREEN + "已成功注册 PlaceholderAPI 扩展");
@@ -43,7 +43,7 @@ public class ServerStatusChecker extends JavaPlugin implements CommandExecutor {
             getLogger().warning(ChatColor.YELLOW + "未找到 PlaceholderAPI，占位符功能将不可用");
         }
         
-        // 启动状态检查任务
+        // 6. 启动状态检查任务
         new StatusCheckerTask(this).startTask();
         
         getLogger().info(ChatColor.GREEN + "ServerStatusChecker 已启用，共加载 " + servers.size() + " 个服务器");
@@ -62,7 +62,6 @@ public class ServerStatusChecker extends JavaPlugin implements CommandExecutor {
             }
         } else {
             sender.sendMessage(ChatColor.GOLD + "=== 服务器状态 ===");
-            // 确保 servers 和 statusCache 不为 null
             if (servers != null && statusCache != null) {
                 servers.forEach((id, info) -> {
                     ServerStatus status = statusCache.getStatus(id);
@@ -78,10 +77,18 @@ public class ServerStatusChecker extends JavaPlugin implements CommandExecutor {
 
     private void loadServers() {
         servers.clear();
-        servers = configManager.getServers();
-        for (ServerInfo server : servers.values()) {
-            statusCache.updateStatus(server.getId(), false, 0);
-            getLogger().info(ChatColor.GREEN + "已加载服务器配置: " + server.getId() + " (" + server.getHost() + ":" + server.getPort() + ")");
+        // 确保 configManager 不为 null
+        if (configManager != null) {
+            servers = configManager.getServers();
+            for (ServerInfo server : servers.values()) {
+                // 确保 statusCache 不为 null
+                if (statusCache != null) {
+                    statusCache.updateStatus(server.getId(), false, 0);
+                }
+                getLogger().info(ChatColor.GREEN + "已加载服务器配置: " + server.getId() + " (" + server.getHost() + ":" + server.getPort() + ")");
+            }
+        } else {
+            getLogger().severe("配置管理器未初始化，无法加载服务器配置！");
         }
     }
 
