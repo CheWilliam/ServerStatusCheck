@@ -3,7 +3,6 @@ package zf.TurboChe.ServerStatusChecker;
 import org.bukkit.scheduler.BukkitRunnable;
 import zf.TurboChe.ServerStatusChecker.utils.ServerInfo;
 import zf.TurboChe.ServerStatusChecker.utils.ConfigManager;
-import zf.TurboChe.ServerStatusChecker.utils.ServerStatus;
 
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -50,11 +49,15 @@ public class StatusCheckerTask {
                     isOnline = false;
                 }
 
+                // 创建 final 变量来保存值
+                final boolean finalIsOnline = isOnline;
+                final int finalPlayerCount = playerCount;
+
                 // 更新缓存状态（回到主线程更新）
                 new BukkitRunnable() {
                     @Override
                     public void run() {
-                        plugin.getStatusCache().updateStatus(server.getId(), isOnline, playerCount);
+                        plugin.getStatusCache().updateStatus(server.getId(), finalIsOnline, finalPlayerCount);
                     }
                 }.runTask(plugin);
             }
