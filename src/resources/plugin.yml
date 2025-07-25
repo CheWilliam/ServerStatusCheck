@@ -3,7 +3,7 @@ main: zf.TurboChe.ServerStatusChecker.ServerStatusChecker
 version: 1.0.0
 author: TurboChe
 description: 服务器状态检查插件
-api-version: 1.16
+
 commands:
   serverstatus:
     description: 查看服务器状态
