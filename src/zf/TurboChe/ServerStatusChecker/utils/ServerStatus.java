@@ -1,23 +1,31 @@
 package zf.TurboChe.ServerStatusChecker.utils;
 
+import org.bukkit.ChatColor;
+
 public class ServerStatus {
-    private final boolean isOnline;
+    private final boolean online;
     private final int playerCount;
     private final long lastCheckTime;
 
-    public ServerStatus(boolean isOnline, int playerCount, long lastCheckTime) {
-        this.isOnline = isOnline;
+    public ServerStatus(boolean online, int playerCount, long lastCheckTime) {
+        this.online = online;
         this.playerCount = playerCount;
         this.lastCheckTime = lastCheckTime;
     }
 
-    // 获取状态文本（在线/离线）
-    public String getStatusText() {
-        return isOnline ? "§a在线" : "§c离线";
+    public boolean isOnline() {
+        return online;
     }
 
-    // Getter 方法
-    public boolean isOnline() { return isOnline; }
-    public int getPlayerCount() { return playerCount; }
-    public long getLastCheckTime() { return lastCheckTime; }
+    public int getPlayerCount() {
+        return playerCount;
+    }
+
+    public long getLastCheckTime() {
+        return lastCheckTime;
+    }
+
+    public String getStatusText() {
+        return online ? ChatColor.GREEN + "在线" : ChatColor.RED + "离线";
+    }
 }
