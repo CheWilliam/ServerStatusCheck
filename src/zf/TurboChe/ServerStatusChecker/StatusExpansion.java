@@ -26,15 +26,12 @@ public class StatusExpansion extends PlaceholderExpansion {
         return plugin.getDescription().getVersion();
     }
 
-    // 移除 persist() 方法（1.7.10的PlaceholderAPI不支持）
-
     @Override
     public String onPlaceholderRequest(Player player, String params) {
         if (params == null || params.isEmpty()) {
             return null;
         }
 
-        // 格式: %serverstatus_<serverId>_<type>%
         String[] parts = params.split("_");
         if (parts.length < 2) {
             return "§c格式错误";
@@ -46,9 +43,9 @@ public class StatusExpansion extends PlaceholderExpansion {
 
         switch (type) {
             case "status":
-                return status.getStatusText();
+                return status.isOnline() ? "§a在线" : "§c离线";
             case "online":
-                return status.isOnline() ? "true" : "false";
+                return String.valueOf(status.isOnline());
             case "players":
                 return String.valueOf(status.getPlayerCount());
             default:
