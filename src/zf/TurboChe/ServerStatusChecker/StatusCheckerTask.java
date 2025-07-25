@@ -3,6 +3,7 @@ package zf.TurboChe.ServerStatusChecker;
 import org.bukkit.scheduler.BukkitRunnable;
 import zf.TurboChe.ServerStatusChecker.utils.ServerInfo;
 import zf.TurboChe.ServerStatusChecker.utils.ConfigManager;
+import zf.TurboChe.ServerStatusChecker.utils.ServerStatus;
 
 import java.net.InetSocketAddress;
 import java.net.Socket;
