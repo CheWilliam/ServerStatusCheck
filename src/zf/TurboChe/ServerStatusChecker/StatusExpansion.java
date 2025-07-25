@@ -26,10 +26,7 @@ public class StatusExpansion extends PlaceholderExpansion {
         return plugin.getDescription().getVersion();
     }
 
-    @Override
-    public boolean persist() {
-        return true;
-    }
+    // 移除 persist() 方法（1.7.10的PlaceholderAPI不支持）
 
     @Override
     public String onPlaceholderRequest(Player player, String params) {
