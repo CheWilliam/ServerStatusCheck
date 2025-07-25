@@ -1,0 +1,16 @@
+name: ServerStatusChecker
+main: zf.TurboChe.ServerStatusChecker.ServerStatusChecker
+version: 1.0.0
+author: TurboChe
+description: 服务器状态检查插件
+api-version: 1.16
+commands:
+  serverstatus:
+    description: 查看服务器状态
+    usage: /<command> [服务器ID]
+    permission: serverstatus.check
+    permission-message: "§c你没有权限执行此命令"
+permissions:
+  serverstatus.check:
+    description: 允许查看服务器状态
+    default: true
