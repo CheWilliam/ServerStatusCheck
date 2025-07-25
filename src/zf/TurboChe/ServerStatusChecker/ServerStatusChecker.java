@@ -7,10 +7,14 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
 
 import zf.TurboChe.ServerStatusChecker.utils.ConfigManager;
+import zf.TurboChe.ServerStatusChecker.utils.ServerInfo;
 import zf.TurboChe.ServerStatusChecker.utils.ServerStatus;
 
 public class ServerStatusChecker extends JavaPlugin {
@@ -68,7 +72,6 @@ public class ServerStatusChecker extends JavaPlugin {
         getLogger().info("ServerStatusChecker 已启用，共加载 " + servers.size() + " 个服务器");
     }
 
-    // 添加 getConfigManager 方法
     public ConfigManager getConfigManager() {
         return configManager;
     }
@@ -88,42 +91,36 @@ public class ServerStatusChecker extends JavaPlugin {
     }
 
     private void startStatusCheckTask() {
-        new StatusCheckerTask(this).startTask();
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                for (ServerInfo server : servers.values()) {
+                    checkServerStatus(server);
+                }
+            }
+        }.runTaskTimerAsynchronously(this, 0L, 20L); // 每秒检查一次
     }
 
-    public static class ServerInfo {
-        private final String id;
-        private final String host;
-        private final int port;
-        private final long checkInterval; // 检测间隔（秒）
-        private final long timeout; // 超时时间（毫秒）
+    private void checkServerStatus(ServerInfo server) {
+        ServerStatus lastStatus = statusCache.getStatus(server.getId());
+        long currentTime = System.currentTimeMillis();
 
-        public ServerInfo(String id, String host, int port, long checkInterval, long timeout) {
-            this.id = id;
-            this.host = host;
-            this.port = port;
-            this.checkInterval = checkInterval;
-            this.timeout = timeout;
+        // 检查是否需要更新状态（避免过于频繁的检测）
+        if (currentTime - lastStatus.getLastCheckTime() < server.getInterval() * 1000) {
+            return;
         }
 
-        public String getId() {
-            return id;
+        try (Socket socket = new Socket()) {
+            socket.connect(new InetSocketAddress(server.getHost(), server.getPort()), (int) server.getTimeout());
+            statusCache.updateStatus(server.getId(), true, 0);
+            getLogger().fine("服务器 " + server.getId() + " 在线");
+        } catch (IOException e) {
+            statusCache.updateStatus(server.getId(), false, 0);
+            getLogger().fine("服务器 " + server.getId() + " 离线: " + e.getMessage());
         }
+    }
 
-        public String getHost() {
-            return host;
-        }
-
-        public int getPort() {
-            return port;
-        }
-
-        public long getCheckInterval() {
-            return checkInterval;
-        }
-
-        public long getTimeout() {
-            return timeout;
-        }
+    public ServerStatus getServerStatus(String serverId) {
+        return statusCache.getStatus(serverId);
     }
 }
